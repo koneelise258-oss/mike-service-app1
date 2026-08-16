@@ -477,7 +477,253 @@ function ServicesTab() {
         </button>
       </div>
 
+            {showForm && (
+        <div className="card mb-6 p-5">
+          <h2 className="mb-4 text-sm font-semibold text-ink">{editing ? 'Modifier' : 'Nouveau'} modèle</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label-field">Nom</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Spark 40" />
+            </div>
+            <div>
+              <label className="label-field">Marque</label>
+              <select value={form.brand_id} onChange={(e) => setForm({ ...form, brand_id: e.target.value })} className="input-field">
+                <option value="">Sélectionner...</option>
+                {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label-field">Description</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field min-h-[60px]" />
+            </div>
+            <div>
+              <label className="label-field">Ordre</label>
+              <input type="number" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: Number(e.target.value) })} className="input-field" />
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" checked={form.popular} onChange={(e) => setForm({ ...form, popular: e.target.checked })} className="h-4 w-4 rounded border-cream-dark" />
+                Populaire (affiché sur l'accueil)
+              </label>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button onClick={handleSave} className="btn-gold"><Save className="h-4 w-4" /> Enregistrer</button>
+            <button onClick={() => setShowForm(false)} className="btn-ghost">Annuler</button>
+          </div>
+        </div>
+      )}
+
+      <div className="card divide-y divide-cream-dark">
+        {models.map((m) => (
+          <div key={m.id} className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm font-semibold text-ink">{m.brand?.name} {m.name}</p>
+              <p className="text-xs text-ink-soft">/{m.slug} {m.popular && '— Populaire'}</p>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={() => { setEditing(m); setForm({ name: m.name, brand_id: m.brand_id, description: m.description || '', popular: m.popular, display_order: m.display_order }); setShowForm(true); }} className="rounded-lg p-2 text-ink-soft hover:bg-cream hover:text-gold">
+                <Edit2 className="h-4 w-4" />
+              </button>
+              <button onClick={() => handleDelete(m.id)} className="rounded-lg p-2 text-ink-soft hover:bg-red-50 hover:text-red-600">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Services ────────────────────────────────────────────────────────────────
+
+function ServicesTab() {
+  const [services, setServices] = useState<RepairService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<RepairService | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', description: '', icon: 'wrench', display_order: 0 });
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('repair_services').select('*').order('display_order', { ascending: true });
+    setServices((data as RepairService[]) || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSave = async () => {
+    if (!form.name) return;
+    const payload = { ...form, slug: slugify(form.name) };
+    if (editing) {
+      await supabase.from('repair_services').update(payload).eq('id', editing.id);
+    } else {
+      await supabase.from('repair_services').insert(payload);
+    }
+    setShowForm(false);
+    setEditing(null);
+    setForm({ name: '', description: '', icon: 'wrench', display_order: 0 });
+    load();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Supprimer ce service ?')) return;
+    await supabase.from('repair_services').delete().eq('id', id);
+    load();
+  };
+
+  if (loading) return <DashboardLoading />;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-ink">Services de réparation</h1>
+        <button onClick={() => { setEditing(null); setForm({ name: '', description: '', icon: 'wrench', display_order: 0 }); setShowForm(true); }} className="btn-gold">
+          <Plus className="h-4 w-4" />
+          Ajouter
+        </button>
+      </div>
+
       {showForm && (
         <div className="card mb-6 p-5">
           <h2 className="mb-4 text-sm font-semibold text-ink">{editing ? 'Modifier' : 'Nouveau'} service</h2>
-          <div clas
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label-field">Nom</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Remplacement d'écran" />
+            </div>
+            <div>
+              <label className="label-field">Icône (lucide-react)</label>
+              <input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} className="input-field" placeholder="screen, battery, plug..." />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label-field">Description</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field min-h-[60px]" />
+            </div>
+            <div>
+              <label className="label-field">Ordre</label>
+              <input type="number" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: Number(e.target.value) })} className="input-field" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button onClick={handleSave} className="btn-gold"><Save className="h-4 w-4" /> Enregistrer</button>
+            <button onClick={() => setShowForm(false)} className="btn-ghost">Annuler</button>
+          </div>
+        </div>
+      )}
+
+      <div className="card divide-y divide-cream-dark">
+        {services.map((s) => (
+          <div key={s.id} className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm font-semibold text-ink">{s.name}</p>
+              <p className="text-xs text-ink-soft">/{s.slug} — icône: {s.icon}</p>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={() => { setEditing(s); setForm({ name: s.name, description: s.description || '', icon: s.icon || 'wrench', display_order: s.display_order }); setShowForm(true); }} className="rounded-lg p-2 text-ink-soft hover:bg-cream hover:text-gold">
+                <Edit2 className="h-4 w-4" />
+              </button>
+              <button onClick={() => handleDelete(s.id)} className="rounded-lg p-2 text-ink-soft hover:bg-red-50 hover:text-red-600">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Options (Tarification) ──────────────────────────────────────────────────
+
+function OptionsTab() {
+  const [options, setOptions] = useState<RepairOption[]>([]);
+  const [models, setModels] = useState<PhoneModel[]>([]);
+  const [services, setServices] = useState<RepairService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<RepairOption | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [filterModel, setFilterModel] = useState<string>('');
+
+  const [form, setForm] = useState({
+    phone_model_id: '',
+    repair_service_id: '',
+    quality_tier: '',
+    price: '' as string | number,
+    min_price: '' as string | number,
+    negotiable: false,
+    stock: 0,
+    warranty: '',
+    available: true,
+    requires_diagnosis: false,
+    display_order: 0,
+  });
+
+  const load = useCallback(async () => {
+    const [opts, m, s] = await Promise.all([
+      supabase.from('repair_options').select('*, repair_service:repair_services(*), phone_model:phone_models(*)').order('display_order', { ascending: true }),
+      supabase.from('phone_models').select('*, brand:brands(*)').order('name'),
+      supabase.from('repair_services').select('*').order('name'),
+    ]);
+    setOptions((opts.data as RepairOption[]) || []);
+    setModels((m.data as PhoneModel[]) || []);
+    setServices((s.data as RepairService[]) || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSave = async () => {
+    if (!form.phone_model_id || !form.repair_service_id) return;
+    const payload = {
+      phone_model_id: form.phone_model_id,
+      repair_service_id: form.repair_service_id,
+      quality_tier: form.quality_tier || '',
+      price: form.requires_diagnosis ? null : (form.price === '' ? null : Number(form.price)),
+      min_price: form.requires_diagnosis ? null : (form.min_price === '' ? null : Number(form.min_price)),
+      negotiable: form.negotiable,
+      stock: form.stock,
+      warranty: form.warranty || null,
+      available: form.available,
+      requires_diagnosis: form.requires_diagnosis,
+      display_order: form.display_order,
+    };
+    if (editing) {
+      await supabase.from('repair_options').update(payload).eq('id', editing.id);
+    } else {
+      await supabase.from('repair_options').insert(payload);
+    }
+    setShowForm(false);
+    setEditing(null);
+    load();
+            </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared ───────────────────────────────────────────────────────────────────
+
+function DashboardLoading() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+    </div>
+  );
+      }
+                      </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared ───────────────────────────────────────────────────────────────────
+
+function DashboardLoading() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+    </div>
+  );
+}
